@@ -38,10 +38,8 @@ body {
 html, body {
     width: 100%;
     height: 100%;
-    overflow: hidden;
 }
 
-/* 通用按钮样式 */
 button {
     font-family: inherit;
     transition: all 0.3s ease;
@@ -55,14 +53,12 @@ button:active {
     transform: translateY(0);
 }
 
-/* 通用输入框样式 */
 input[type="text"],
 input[type="email"],
 input[type="password"] {
     font-family: inherit;
 }
 
-/* 通用滚动条样式 */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -81,14 +77,12 @@ input[type="password"] {
     background: #555;
 }
 
-/* 响应式设计 */
 @media (max-width: 768px) {
     :root {
         --shadow-sm: 0 1px 4px rgba(0,0,0,0.1);
     }
 }
 
-/* 动画 */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -122,7 +116,6 @@ input[type="password"] {
     }
 }
 
-/* 工具类 */
 .text-center {
     text-align: center;
 }
@@ -145,7 +138,6 @@ input[type="password"] {
     display: block !important;
 }
 
-/* 加载动画 */
 .spinner {
     display: inline-block;
     width: 20px;
@@ -160,13 +152,11 @@ input[type="password"] {
     to { transform: rotate(360deg); }
 }
 
-/* 无障碍设计 */
 :focus-visible {
     outline: 2px solid var(--tab-active);
     outline-offset: 2px;
 }
 
-/* 深色模式支持（可选） */
 @media (prefers-color-scheme: dark) {
     :root {
         --text-primary: #e0e0e0;

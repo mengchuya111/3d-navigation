@@ -1,101 +1,115 @@
-/**
- * 数据管理模块
- * 统一处理 localStorage 和数据操作
- */
+// 数据管理模块 - 统一管理��有数据存储和操作
 
 const DataManager = {
-  // 用户相关
-  setUser(username, data) {
-    localStorage.setItem(`user_${username}`, JSON.stringify(data));
-  },
+    // 用户相关
+    setUser: (username, email, password) => {
+        const userData = {
+            username,
+            email,
+            password,
+            createdAt: new Date().toISOString()
+        };
+        localStorage.setItem(`user_${username}`, JSON.stringify(userData));
+    },
 
-  getUser(username) {
-    const data = localStorage.getItem(`user_${username}`);
-    return data ? JSON.parse(data) : null;
-  },
+    getUser: (username) => {
+        const data = localStorage.getItem(`user_${username}`);
+        return data ? JSON.parse(data) : null;
+    },
 
-  // 登录状态
-  setLoginStatus(username) {
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('username', username);
-  },
+    userExists: (username) => {
+        return localStorage.getItem(`user_${username}`) !== null;
+    },
 
-  getLoginStatus() {
-    return {
-      isLoggedIn: localStorage.getItem('isLoggedIn') === 'true',
-      username: localStorage.getItem('username') || ''
-    };
-  },
+    // 登录状态
+    setLoginState: (username, isLoggedIn = true) => {
+        localStorage.setItem('isLoggedIn', isLoggedIn ? 'true' : 'false');
+        localStorage.setItem('username', username);
+    },
 
-  logout() {
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('username');
-  },
+    getLoginState: () => {
+        return {
+            isLoggedIn: localStorage.getItem('isLoggedIn') === 'true',
+            username: localStorage.getItem('username') || ''
+        };
+    },
 
-  // 导航历史
-  addNavigationRecord(username, record) {
-    const history = this.getNavigationHistory(username);
-    history.unshift(record);
-    if (history.length > 50) history.pop();
-    localStorage.setItem(`navHistory_${username}`, JSON.stringify(history));
-  },
+    logout: () => {
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('username');
+    },
 
-  getNavigationHistory(username) {
-    const data = localStorage.getItem(`navHistory_${username}`);
-    return data ? JSON.parse(data) : [];
-  },
+    // 导航历史
+    addNavigationHistory: (username, record) => {
+        const history = JSON.parse(localStorage.getItem(`navHistory_${username}`) || '[]');
+        history.unshift({
+            start: record.start,
+            end: record.end,
+            floor: record.floor || '3D导航',
+            distance: record.distance || 0,
+            date: new Date().toLocaleDateString('zh-CN'),
+            timestamp: Date.now()
+        });
+        if (history.length > 50) history.pop();
+        localStorage.setItem(`navHistory_${username}`, JSON.stringify(history));
+    },
 
-  clearNavigationHistory(username) {
-    localStorage.setItem(`navHistory_${username}`, JSON.stringify([]));
-  },
+    getNavigationHistory: (username) => {
+        return JSON.parse(localStorage.getItem(`navHistory_${username}`) || '[]');
+    },
 
-  deleteNavigationRecord(username, index) {
-    const history = this.getNavigationHistory(username);
-    history.splice(index, 1);
-    localStorage.setItem(`navHistory_${username}`, JSON.stringify(history));
-  },
+    clearNavigationHistory: (username) => {
+        localStorage.removeItem(`navHistory_${username}`);
+    },
 
-  // 检查是否已登录
-  isLoggedIn() {
-    return localStorage.getItem('isLoggedIn') === 'true';
-  },
+    deleteNavigationRecord: (username, index) => {
+        const history = DataManager.getNavigationHistory(username);
+        history.splice(index, 1);
+        localStorage.setItem(`navHistory_${username}`, JSON.stringify(history));
+    },
 
-  getCurrentUsername() {
-    return localStorage.getItem('username') || '';
-  },
+    // 用户偏好设置
+    setPreference: (username, key, value) => {
+        const prefs = JSON.parse(localStorage.getItem(`prefs_${username}`) || '{}');
+        prefs[key] = value;
+        localStorage.setItem(`prefs_${username}`, JSON.stringify(prefs));
+    },
 
-  // 收藏夹
-  addFavorite(username, room) {
-    const favorites = this.getFavorites(username);
-    if (!favorites.find(r => r.id === room.id)) {
-      favorites.push(room);
-      localStorage.setItem(`favorites_${username}`, JSON.stringify(favorites));
+    getPreference: (username, key, defaultValue = null) => {
+        const prefs = JSON.parse(localStorage.getItem(`prefs_${username}`) || '{}');
+        return prefs[key] !== undefined ? prefs[key] : defaultValue;
+    },
+
+    // 数据验证
+    validateEmail: (email) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    },
+
+    validatePassword: (password) => {
+        return password && password.length >= 6;
+    },
+
+    validateUsername: (username) => {
+        return username && username.length >= 3 && username.length <= 20;
+    },
+
+    // 清理所有数据（开发调试用）
+    clearAllData: () => {
+        if (confirm('确定要清除所有数据吗？')) {
+            const keys = Object.keys(localStorage);
+            keys.forEach(key => {
+                if (key.includes('user_') || key.includes('navHistory_') || key.includes('prefs_') ||
+                    key === 'isLoggedIn' || key === 'username') {
+                    localStorage.removeItem(key);
+                }
+            });
+            alert('所有数据已清除');
+        }
     }
-  },
-
-  getFavorites(username) {
-    const data = localStorage.getItem(`favorites_${username}`);
-    return data ? JSON.parse(data) : [];
-  },
-
-  removeFavorite(username, roomId) {
-    const favorites = this.getFavorites(username);
-    const filtered = favorites.filter(r => r.id !== roomId);
-    localStorage.setItem(`favorites_${username}`, JSON.stringify(filtered));
-  },
-
-  // 设置
-  setSetting(key, value) {
-    localStorage.setItem(`setting_${key}`, JSON.stringify(value));
-  },
-
-  getSetting(key, defaultValue = null) {
-    const data = localStorage.getItem(`setting_${key}`);
-    return data ? JSON.parse(data) : defaultValue;
-  }
 };
 
-// 导出给全局使用
-if (typeof window !== 'undefined') {
-  window.DataManager = DataManager;
+// 导出供全局使用
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = DataManager;
 }
