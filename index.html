@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 立体智能导航</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+        #ui-panel {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px; border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            z-index: 10; width: 300px;
+        }
+        h3 { margin: 0 0 15px 0; font-size: 18px; color: #333; }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
+        .coord-display { font-family: monospace; font-size: 12px; color: #007bff; background: #f0f7ff; padding: 4px; border-radius: 4px; margin-bottom: 5px;}
+
+        .floor-selector {
+            display: flex; gap: 5px; margin-bottom: 10px;
+        }
+        .floor-btn {
+            flex: 1; padding: 8px; border: 2px solid #ddd; border-radius: 6px;
+            background: white; cursor: pointer; font-weight: 600; font-size: 12px;
+            transition: all 0.2s;
+        }
+        .floor-btn.active {
+            background: #007bff; color: white; border-color: #007bff;
+        }
+        .floor-btn:hover:not(.active) {
+            background: #f0f7ff;
+        }
+
+        button {
+            width: 100%; padding: 10px; margin-bottom: 8px;
+            border: none; border-radius: 6px; cursor: pointer;
+            font-weight: 600; transition: all 0.2s;
+        }
+        .btn-start { background: #007bff; color: white; }
+        .btn-start:hover { background: #0056b3; }
+        .btn-reset { background: #f8f9fa; color: #333; border: 1px solid #ddd; }
+        .btn-reset:hover { background: #e2e6ea; }
+
+        .active-btn { background: #28a745 !important; color: white !important; }
+
+        #status { margin-top: 10px; font-size: 13px; color: #555; font-style: italic; }
+        .legend { display: flex; gap: 10px; font-size: 11px; margin-top: 10px; flex-wrap: wrap; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+        .axis-legend {
+            display: flex; gap: 8px; font-size: 11px; margin-top: 8px;
+            padding: 8px; background: #f8f9fa; border-radius: 6px;
+        }
+        .axis-item { display: flex; align-items: center; gap: 4px; }
+        .axis-line { width: 20px; height: 3px; display: inline-block; }
+
+        #top-nav {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 20;
+        }
+        .nav-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .nav-btn-profile {
+            background: linear-gradient(145deg, #1976D2, #1565C0);
+            color: white;
+            box-shadow: 0 4px 15px rgba(25, 118, 210, 0.4);
+        }
+        .nav-btn-profile:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(25, 118, 210, 0.5);
+        }
+        .nav-btn-logout {
+            background: rgba(255,255,255,0.95);
+            color: #E53935;
+            border: 1px solid #ffcdd2;
+        }
+        .nav-btn-logout:hover {
+            background: #E53935;
+            color: white;
+        }
+        .nav-btn-login {
+            background: linear-gradient(145deg, #1976D2, #1565C0);
+            color: white;
+            box-shadow: 0 4px 15px rgba(25, 118, 210, 0.4);
+        }
+        .nav-btn-login:hover {
+            transform: translateY(-2px);
+        }
+        .search-box-container {
+            margin-bottom: 8px;
+            position: relative;
+        }
+        .search-input-box {
+            width: 100%;
+            height: 32px;
+            padding: 0 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            font-size: 12px;
+            background: #f8f9fa;
+            outline: none;
+            transition: all 0.3s ease;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .search-input-box:focus {
+            border-color: #007bff;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+        .search-results-dropdown {
+            max-height: 120px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            margin-top: 4px;
+            display: none;
+            position: absolute;
+            width: 100%;
+            z-index: 100;
+        }
+        .search-results-dropdown.active {
+            display: block;
+        }
+        .search-result-item {
+            padding: 6px 10px;
+            font-size: 11px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.2s;
+        }
+        .search-result-item:hover {
+            background: #f0f7ff;
+        }
+        .search-result-item .room-name {
+            font-weight: 600;
+            color: #333;
+        }
+        .search-result-item .room-info {
+            color: #999;
+            font-size: 10px;
+        }
+        .user-info {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+            padding: 6px 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+    </style>
+
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.154.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.154.0/examples/jsm/"
+        }
+      }
+    </script>
+<base target="_blank">
+</head>
+
+<body>
+    <!-- 顶部导航 -->
+    <div id="top-nav">
+        <button class="nav-btn nav-btn-profile" id="btn-profile" onclick="goToProfile()" style="display:none">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+            个人中心
+        </button>
+        <button class="nav-btn nav-btn-logout" id="btn-logout" onclick="logout()" style="display:none">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+            </svg>
+            退出
+        </button>
+        <button class="nav-btn nav-btn-login" id="btn-login" onclick="goToLogin()" style="display:flex">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+            登录
+        </button>
+    </div>
+    <div id="ui-panel">
+        <h3>🧭 3D 立体智能导航</h3>
+
+        <div class="user-info" id="user-info-bar" style="display:none">
+            👤 <span id="current-username">用户</span>
+        </div>
+
+        <div class="control-group">
+            <label>选择楼层</label>
+            <div class="floor-selector">
+                <button class="floor-btn active" onclick="selectFloor(0)">1楼</button>
+                <button class="floor-btn" onclick="selectFloor(1)">2楼</button>
+                <button class="floor-btn" onclick="selectFloor(2)">3楼</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>🔍 搜索起点房间</label>
+            <div class="search-box-container">
+                <input type="text" class="search-input-box" id="search-start" placeholder="输入房间号 (如: 101)" oninput="handleRoomSearch(this, 'start')">
+                <div class="search-results-dropdown" id="search-start-results"></div>
+            </div>
+            <button id="btn-set-start" onclick="setMode('start')">📍 或点击地图设置起点</button>
+            <div id="start-coord" class="coord-display">未选择</div>
+        </div>
+
+        <div class="control-group">
+            <label>🔍 搜索终点房间</label>
+            <div class="search-box-container">
+                <input type="text" class="search-input-box" id="search-end" placeholder="输入房间号 (如: 203)" oninput="handleRoomSearch(this, 'end')">
+                <div class="search-results-dropdown" id="search-end-results"></div>
+            </div>
+            <button id="btn-set-end" onclick="setMode('end')">🏁 或点击地图设置终点</button>
+            <div id="end-coord" class="coord-display">未选择</div>
+        </div>
+
+        <div class="control-group">
+            <button id="btn-nav" class="btn-start" disabled>▶ 开始导航</button>
+            <button class="btn-reset" onclick="resetScene()">🔄 重置所有</button>
+        </div>
+
+        <div id="status">状态：请选择楼层并设置起点</div>
+
+        <div class="legend">
+            <div><span class="dot" style="background:#00ff00"></span> 起点</div>
+            <div><span class="dot" style="background:#ff0000"></span> 终点</div>
+            <div><span class="dot" style="background:#555"></span> 障碍</div>
+        </div>
+
+        <div class="axis-legend">
+            <div class="axis-item"><span class="axis-line" style="background:#ff0000"></span> X轴</div>
+            <div class="axis-item"><span class="axis-line" style="background:#00ff00"></span> Y轴</div>
+            <div class="axis-item"><span class="axis-line" style="background:#0000ff"></span> Z轴</div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer, controls;
+        let raycaster, mouse;
+        let startMarker, endMarker, pathMesh, userDot;
+        let currentFloor = 0;
+        let floorPlanes = [];
+        let floorHelpers = [];
+
+        let mode = null; 
+        let startPos = null; 
+        let endPos = null;   
+        let isNavActive = false;
+
+        const GRID_SIZE = 15;
+        const CELL_SIZE = 1; 
+        const OFFSET = (GRID_SIZE * CELL_SIZE) / 2;
+        const FLOOR_COUNT = 3;
+        const FLOOR_HEIGHT = 4;
+
+        const mapGrid = [
+            [
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,1,1,1,0,0,0,0,0,1,1,1,0,0],
+                [0,0,0,0,1,0,0,0,0,0,1,0,0,0,0],
+                [0,0,0,0,1,0,0,0,0,0,1,0,0,0,0],
+                [0,0,0,0,1,1,1,0,1,1,1,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,1,1,0,0,0,0,0,0,0,1,1,0,0],
+                [0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+                [0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],
+                [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            ],
+            [
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,1,1,1,0,0,0,0,0,0],
+                [0,0,0,0,0,0,1,0,1,0,0,0,0,0,0],
+                [0,0,1,1,1,0,1,0,1,0,1,1,1,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,1,1,0,0,0,0,0,0,0,1,1,0,0],
+                [0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],
+                [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            ],
+            [
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,1,1,1,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            ]
+        ];
+
+        const stairs = [
+            {x: 7, z: 7},
+            {x: 3, z: 3},
+        ];
+
+        init();
+        animate();
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f4f8);
+            scene.fog = new THREE.Fog(0xf0f4f8, 20, 80);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
+            camera.position.set(25, 30, 25);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.target.set(0, 5, 0);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(15, 30, 15);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            scene.add(dirLight);
+
+            addAxes();
+            build3DMap();
+            createFloorPlanes();
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('pointerdown', onPointerDown);
+        }
+
+        function addAxes() {
+            const axisLength = 12;
+            const axisOrigin = new THREE.Vector3(-OFFSET - 2, 0, -OFFSET - 2);
+
+            const xAxisGeo = new THREE.CylinderGeometry(0.08, 0.08, axisLength, 8);
+            const xAxisMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+            const xAxis = new THREE.Mesh(xAxisGeo, xAxisMat);
+            xAxis.rotation.z = -Math.PI / 2;
+            xAxis.position.set(axisOrigin.x + axisLength/2, axisOrigin.y, axisOrigin.z);
+            scene.add(xAxis);
+
+            const xCone = new THREE.Mesh(
+                new THREE.ConeGeometry(0.2, 0.5, 8),
+                xAxisMat
+            );
+            xCone.rotation.z = -Math.PI / 2;
+            xCone.position.set(axisOrigin.x + axisLength, axisOrigin.y, axisOrigin.z);
+            scene.add(xCone);
+
+            const yAxisGeo = new THREE.CylinderGeometry(0.08, 0.08, axisLength, 8);
+            const yAxisMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+            const yAxis = new THREE.Mesh(yAxisGeo, yAxisMat);
+            yAxis.position.set(axisOrigin.x, axisOrigin.y + axisLength/2, axisOrigin.z);
+            scene.add(yAxis);
+
+            const yCone = new THREE.Mesh(
+                new THREE.ConeGeometry(0.2, 0.5, 8),
+                yAxisMat
+            );
+            yCone.position.set(axisOrigin.x, axisOrigin.y + axisLength, axisOrigin.z);
+            scene.add(yCone);
+
+            const zAxisGeo = new THREE.CylinderGeometry(0.08, 0.08, axisLength, 8);
+            const zAxisMat = new THREE.MeshStandardMaterial({ color: 0x0000ff });
+            const zAxis = new THREE.Mesh(zAxisGeo, zAxisMat);
+            zAxis.rotation.x = Math.PI / 2;
+            zAxis.position.set(axisOrigin.x, axisOrigin.y, axisOrigin.z + axisLength/2);
+            scene.add(zAxis);
+
+            const zCone = new THREE.Mesh(
+                new THREE.ConeGeometry(0.2, 0.5, 8),
+                zAxisMat
+            );
+            zCone.rotation.x = Math.PI / 2;
+            zCone.position.set(axisOrigin.x, axisOrigin.y, axisOrigin.z + axisLength);
+            scene.add(zCone);
+        }
+
+        function gridToWorld(gx, gz, floor) {
+            return new THREE.Vector3(
+                gx * CELL_SIZE - OFFSET + CELL_SIZE / 2, 
+                floor * FLOOR_HEIGHT + 0.5, 
+                gz * CELL_SIZE - OFFSET + CELL_SIZE / 2
+            );
+        }
+
+        function build3DMap() {
+            for(let floor = 0; floor < FLOOR_COUNT; floor++) {
+                const y = floor * FLOOR_HEIGHT;
+
+                const floorGeo = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE);
+                const floorMat = new THREE.MeshStandardMaterial({ 
+                    color: floor === currentFloor ? 0xe8f4ff : 0xf5f5f5,
+                    transparent: true,
+                    opacity: floor === currentFloor ? 1 : 0.6
+                });
+                const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+                floorMesh.rotation.x = -Math.PI / 2;
+                floorMesh.position.y = y;
+                floorMesh.receiveShadow = true;
+                floorMesh.userData.floor = floor;
+                scene.add(floorMesh);
+
+                const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 
+                    floor === currentFloor ? 0x007bff : 0xcccccc, 
+                    floor === currentFloor ? 0xcccccc : 0xe5e5e5
+                );
+                gridHelper.position.y = y + 0.01;
+                gridHelper.userData.floor = floor;
+                scene.add(gridHelper);
+                floorHelpers.push(gridHelper);
+
+                const wallGeo = new THREE.BoxGeometry(CELL_SIZE, FLOOR_HEIGHT - 0.2, CELL_SIZE);
+                const wallMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
+
+                for(let z = 0; z < GRID_SIZE; z++) {
+                    for(let x = 0; x < GRID_SIZE; x++) {
+                        if(mapGrid[floor][z][x] === 1) {
+                            const wall = new THREE.Mesh(wallGeo, wallMat);
+                            const pos = gridToWorld(x, z, floor);
+                            wall.position.set(pos.x, y + FLOOR_HEIGHT/2 - 0.1, pos.z);
+                            wall.castShadow = true;
+                            wall.receiveShadow = true;
+                            scene.add(wall);
+                        }
+                    }
+                }
+
+                stairs.forEach((stair, idx) => {
+                    if(floor < FLOOR_COUNT - 1) {
+                        const stairGeo = new THREE.CylinderGeometry(0.3, 0.3, FLOOR_HEIGHT, 8);
+                        const stairMat = new THREE.MeshStandardMaterial({ 
+                            color: 0xffaa00, 
+                            emissive: 0xff6600, 
+                            emissiveIntensity: 0.3,
+                            transparent: true,
+                            opacity: 0.8
+                        });
+                        const stairMesh = new THREE.Mesh(stairGeo, stairMat);
+                        const pos = gridToWorld(stair.x, stair.z, floor);
+                        stairMesh.position.set(pos.x, y + FLOOR_HEIGHT/2, pos.z);
+                        scene.add(stairMesh);
+                    }
+                });
+
+                const labelGeo = new THREE.PlaneGeometry(3, 0.8);
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#007bff';
+                ctx.fillRect(0, 0, 256, 64);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 32px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`第 ${floor + 1} 层`, 128, 32);
+                const labelTex = new THREE.CanvasTexture(canvas);
+                const labelMat = new THREE.MeshBasicMaterial({ map: labelTex, transparent: true });
+                const label = new THREE.Mesh(labelGeo, labelMat);
+                label.position.set(-OFFSET - 2, y + 0.5, -OFFSET - 2);
+                label.rotation.x = -Math.PI / 2;
+                scene.add(label);
+            }
+        }
+
+        function createFloorPlanes() {
+            for(let floor = 0; floor < FLOOR_COUNT; floor++) {
+                const planeGeo = new THREE.PlaneGeometry(GRID_SIZE * CELL_SIZE, GRID_SIZE * CELL_SIZE);
+                const planeMat = new THREE.MeshBasicMaterial({ visible: false });
+                const clickPlane = new THREE.Mesh(planeGeo, planeMat);
+                clickPlane.rotation.x = -Math.PI / 2;
+                clickPlane.position.y = floor * FLOOR_HEIGHT + 0.02;
+                clickPlane.name = "clickPlane";
+                clickPlane.userData.floor = floor;
+                scene.add(clickPlane);
+                floorPlanes.push(clickPlane);
+            }
+        }
+
+        window.selectFloor = (floor) => {
+            currentFloor = floor;
+            document.querySelectorAll('.floor-btn').forEach((btn, idx) => {
+                btn.classList.toggle('active', idx === floor);
+            });
+
+            scene.traverse((obj) => {
+                if(obj.userData.floor !== undefined) {
+                    if(obj.material) {
+                        if(obj.userData.floor === currentFloor) {
+                            obj.material.opacity = 1;
+                            if(obj.material.color) obj.material.color.setHex(0xe8f4ff);
+                        } else {
+                            obj.material.opacity = 0.4;
+                            if(obj.material.color) obj.material.color.setHex(0xf5f5f5);
+                        }
+                    }
+                }
+            });
+
+            updateStatus(`已切换到第 ${floor + 1} 层，请设置${mode === 'start' ? '起点' : mode === 'end' ? '终点' : '起点或终点'}`);
+        };
+
+        window.setMode = (newMode) => {
+            mode = newMode;
+            document.getElementById('btn-set-start').classList.remove('active-btn');
+            document.getElementById('btn-set-end').classList.remove('active-btn');
+
+            if(mode === 'start') {
+                document.getElementById('btn-set-start').classList.add('active-btn');
+                updateStatus(`请在第 ${currentFloor + 1} 层地图上点击设置起点`);
+            } else {
+                document.getElementById('btn-set-end').classList.add('active-btn');
+                updateStatus(`请在第 ${currentFloor + 1} 层地图上点击设置终点`);
+            }
+        };
+
+        function onPointerDown(event) {
+            if (!mode || isNavActive) return;
+            if (event.target.closest('#ui-panel')) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(floorPlanes);
+
+            for (let i = 0; i < intersects.length; i++) {
+                const hitFloor = intersects[i].object.userData.floor;
+                const point = intersects[i].point;
+                const gridX = Math.floor((point.x + OFFSET) / CELL_SIZE);
+                const gridZ = Math.floor((point.z + OFFSET) / CELL_SIZE);
+
+                if(gridX < 0 || gridX >= GRID_SIZE || gridZ < 0 || gridZ >= GRID_SIZE) return;
+                if(mapGrid[hitFloor][gridZ][gridX] === 1) {
+                    updateStatus("❌ 不能选择在墙壁上！", true);
+                    return;
+                }
+
+                const precisePos = gridToWorld(gridX, gridZ, hitFloor);
+
+                if (mode === 'start') {
+                    setStart(precisePos, gridX, gridZ, hitFloor);
+                    mode = null;
+                    document.getElementById('btn-set-start').classList.remove('active-btn');
+                    if(endPos) checkReady();
+                    else updateStatus("起点已设置，请设置终点");
+                } else {
+                    setEnd(precisePos, gridX, gridZ, hitFloor);
+                    mode = null;
+                    document.getElementById('btn-set-end').classList.remove('active-btn');
+                    if(startPos) checkReady();
+                    else updateStatus("终点已设置，请设置起点");
+                }
+                break;
+            }
+        }
+
+        function setStart(pos, gx, gz, floor) {
+            startPos = { pos, gx, gz, floor };
+            if(startMarker) scene.remove(startMarker);
+            startMarker = createMarker(pos, 0x00ff00);
+            document.getElementById('start-coord').innerText = `3D: (${gx}, ${floor}, ${gz}) [X,Y,Z]`;
+        }
+
+        function setEnd(pos, gx, gz, floor) {
+            endPos = { pos, gx, gz, floor };
+            if(endMarker) scene.remove(endMarker);
+            endMarker = createMarker(pos, 0xff0000);
+            document.getElementById('end-coord').innerText = `3D: (${gx}, ${floor}, ${gz}) [X,Y,Z]`;
+        }
+
+        function checkReady() {
+            if(startPos && endPos) {
+                document.getElementById('btn-nav').disabled = false;
+                updateStatus("✅ 就绪！点击开始导航");
+            }
+        }
+
+        function createMarker(pos, color) {
+            const geo = new THREE.SphereGeometry(0.3, 16, 16);
+            const mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.5 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(pos);
+            scene.add(mesh);
+            return mesh;
+        }
+
+        class Node3D {
+            constructor(x, y, z, parent = null) {
+                this.x = x; this.y = y; this.z = z; this.parent = parent;
+                this.g = 0; this.h = 0; this.f = 0; 
+            }
+        }
+
+        function isStair(x, z) {
+            return stairs.some(s => s.x === x && s.z === z);
+        }
+
+        function findPath3D(startGx, startGz, startFloor, endGx, endGz, endFloor) {
+            let openList = [];
+            let closedList = [];
+            let startNode = new Node3D(startGx, startFloor, startGz);
+            openList.push(startNode);
+
+            while(openList.length > 0) {
+                let lowInd = 0;
+                for(let i = 0; i < openList.length; i++) {
+                    if(openList[i].f < openList[lowInd].f) lowInd = i;
+                }
+                let currentNode = openList[lowInd];
+
+                if(currentNode.x === endGx && currentNode.y === endFloor && currentNode.z === endGz) {
+                    let curr = currentNode;
+                    let ret = [];
+                    while(curr) { ret.push(curr); curr = curr.parent; }
+                    return ret.reverse();
+                }
+
+                openList.splice(lowInd, 1);
+                closedList.push(currentNode);
+
+                let neighbors = [
+                    {x: 0, y: 0, z: -1},
+                    {x: 0, y: 0, z: 1},
+                    {x: -1, y: 0, z: 0},
+                    {x: 1, y: 0, z: 0},
+                    {x: 0, y: -1, z: 0},
+                    {x: 0, y: 1, z: 0}
+                ];
+
+                for(let i = 0; i < neighbors.length; i++) {
+                    let nx = currentNode.x + neighbors[i].x;
+                    let ny = currentNode.y + neighbors[i].y;
+                    let nz = currentNode.z + neighbors[i].z;
+
+                    if(nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) continue;
+                    if(ny < 0 || ny >= FLOOR_COUNT) continue;
+
+                    if(neighbors[i].y !== 0) {
+                        if(!isStair(currentNode.x, currentNode.z)) continue;
+                    }
+
+                    if(mapGrid[ny][nz][nx] === 1) continue;
+
+                    if(closedList.find(n => n.x === nx && n.y === ny && n.z === nz)) continue;
+
+                    let gScore = currentNode.g + 1;
+                    let neighbor = openList.find(n => n.x === nx && n.y === ny && n.z === nz);
+                    let gScoreIsBest = false;
+
+                    if(!neighbor) {
+                        gScoreIsBest = true;
+                        neighbor = new Node3D(nx, ny, nz, currentNode);
+                        openList.push(neighbor);
+                    } else if(gScore < neighbor.g) {
+                        gScoreIsBest = true;
+                    }
+
+                    if(gScoreIsBest) {
+                        neighbor.parent = currentNode;
+                        neighbor.g = gScore;
+                        neighbor.h = Math.abs(nx - endGx) + Math.abs(ny - endFloor) + Math.abs(nz - endGz);
+                        neighbor.f = neighbor.g + neighbor.h;
+                    }
+                }
+            }
+            return [];
+        }
+
+        document.getElementById('btn-nav').addEventListener('click', () => {
+            if(!startPos || !endPos) return;
+
+            if(isNavActive) {
+                isNavActive = false;
+                navProgress = 0;
+            }
+
+            if(pathMesh) { scene.remove(pathMesh); pathMesh = null; }
+            if(userDot) { scene.remove(userDot); userDot = null; }
+
+            const pathNodes = findPath3D(
+                startPos.gx, startPos.gz, startPos.floor,
+                endPos.gx, endPos.gz, endPos.floor
+            );
+
+            if(pathNodes.length === 0) {
+                updateStatus("❌ 无法到达目的地！请检查是否可以通过楼梯到达", true);
+                return;
+            }
+
+            const points = pathNodes.map(node => gridToWorld(node.x, node.z, node.y));
+
+            const curve = new THREE.CatmullRomCurve3(points);
+            curve.curveType = 'centripetal';
+
+            const tubeGeo = new THREE.TubeGeometry(curve, 128, 0.12, 8, false);
+            const tubeMat = new THREE.MeshStandardMaterial({ 
+                color: 0x007bff, 
+                emissive: 0x0044aa,
+                emissiveIntensity: 0.3
+            });
+            pathMesh = new THREE.Mesh(tubeGeo, tubeMat);
+            scene.add(pathMesh);
+
+            userDot = new THREE.Mesh(
+                new THREE.SphereGeometry(0.3, 16, 16),
+                new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xaa8800 })
+            );
+            userDot.position.copy(points[0]);
+            scene.add(userDot);
+
+            isNavActive = true;
+            navProgress = 0;
+            navCurve = curve;
+
+            document.getElementById('btn-nav').disabled = false;
+            updateStatus("🚀 3D导航中...");
+        });
+
+        let navProgress = 0;
+        let navCurve = null;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            if(isNavActive && navCurve) {
+                navProgress += 0.003;
+                if(navProgress > 1) {
+                    navProgress = 1;
+                    isNavActive = false;
+                    updateStatus("🏁 已到达目的地 (点击'开始导航'可重复演示)");
+                    document.getElementById('btn-nav').disabled = false;
+                }
+
+                const pos = navCurve.getPoint(navProgress);
+                userDot.position.copy(pos);
+
+                const targetCamPos = pos.clone().add(new THREE.Vector3(8, 12, 8));
+                camera.position.lerp(targetCamPos, 0.03);
+                controls.target.lerp(pos, 0.03);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function updateStatus(msg, isError = false) {
+            const el = document.getElementById('status');
+            el.innerText = msg;
+            el.style.color = isError ? 'red' : '#555';
+        }
+
+        window.resetScene = () => {
+            startPos = null;
+            endPos = null;
+            isNavActive = false;
+            navProgress = 0;
+            if(startMarker) scene.remove(startMarker);
+            if(endMarker) scene.remove(endMarker);
+            if(pathMesh) scene.remove(pathMesh);
+            if(userDot) scene.remove(userDot);
+            startMarker = endMarker = pathMesh = userDot = null;
+
+            document.getElementById('start-coord').innerText = "未选择";
+            document.getElementById('end-coord').innerText = "未选择";
+            document.getElementById('btn-nav').disabled = true;
+            updateStatus("状态：已重置，请选择楼层并设置起点");
+
+            camera.position.set(25, 30, 25);
+            controls.target.set(0, 5, 0);
+        };
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        window.setStart = setStart;
+        window.setEnd = setEnd;
+        window.setMode = setMode;
+        window.selectFloor = selectFloor;
+        window.checkReady = checkReady;
+        window.updateStatus = updateStatus;
+        window.gridToWorld = gridToWorld;
+        window.resetScene = resetScene;
+        window.createMarker = createMarker;
+    </script>
+
+    <script>
+        // 房间数据库
+        const roomDatabase = [
+            { id: '101', name: '101', floor: 0, x: 1, z: 2, category: '教师信息室' },
+            { id: '102', name: '102', floor: 0, x: 5, z: 2, category: '教师信息室' },
+            { id: '103', name: '103', floor: 0, x: 6, z: 2, category: '普通教室' },
+            { id: '104', name: '104', floor: 0, x: 7, z: 2, category: '普通教室' },
+            { id: '105', name: '105', floor: 0, x: 8, z: 2, category: '普通教室' },
+            { id: '106', name: '106', floor: 0, x: 9, z: 2, category: '普通教室' },
+            { id: '107', name: '107', floor: 0, x: 1, z: 4, category: '普通教室' },
+            { id: '108', name: '108', floor: 0, x: 5, z: 4, category: '普通教室' },
+            { id: '109', name: '109', floor: 0, x: 6, z: 4, category: '普通教室' },
+            { id: '110', name: '110', floor: 0, x: 7, z: 4, category: '普通教室' },
+            { id: '111', name: '111', floor: 0, x: 8, z: 4, category: '普通教室' },
+            { id: '112', name: '112', floor: 0, x: 9, z: 4, category: '普通教室' },
+            { id: '113', name: '113', floor: 0, x: 1, z: 6, category: '普通教室' },
+            { id: '114', name: '114', floor: 0, x: 5, z: 6, category: '普通教室' },
+            { id: '115', name: '115', floor: 0, x: 6, z: 6, category: '普通教室' },
+            { id: '116', name: '116', floor: 0, x: 8, z: 6, category: '普通教室' },
+            { id: '117', name: '117', floor: 0, x: 9, z: 6, category: '普通教室' },
+            { id: '118', name: '118', floor: 0, x: 10, z: 6, category: '普通教室' },
+            { id: '201', name: '201', floor: 1, x: 1, z: 2, category: '普通教室' },
+            { id: '202', name: '202', floor: 1, x: 5, z: 2, category: '普通教室' },
+            { id: '203', name: '203', floor: 1, x: 6, z: 2, category: '教师信息室' },
+            { id: '204', name: '204', floor: 1, x: 7, z: 2, category: '普通教室' },
+            { id: '205', name: '205', floor: 1, x: 8, z: 2, category: '普通教室' },
+            { id: '206', name: '206', floor: 1, x: 9, z: 2, category: '普通教室' },
+            { id: '207', name: '207', floor: 1, x: 1, z: 4, category: '普通教室' },
+            { id: '208', name: '208', floor: 1, x: 5, z: 4, category: '普通教室' },
+            { id: '209', name: '209', floor: 1, x: 6, z: 4, category: '普通教室' },
+            { id: '210', name: '210', floor: 1, x: 7, z: 4, category: '普通教室' },
+            { id: '211', name: '211', floor: 1, x: 8, z: 4, category: '普通教室' },
+            { id: '212', name: '212', floor: 1, x: 9, z: 4, category: '普通教室' },
+            { id: '213', name: '213', floor: 1, x: 1, z: 6, category: '普通教室' },
+            { id: '214', name: '214', floor: 1, x: 5, z: 6, category: '普通教室' },
+            { id: '215', name: '215', floor: 1, x: 6, z: 6, category: '普通教室' },
+            { id: '216', name: '216', floor: 1, x: 8, z: 6, category: '普通教室' },
+            { id: '217', name: '217', floor: 1, x: 9, z: 6, category: '普通教室' },
+            { id: '218', name: '218', floor: 1, x: 10, z: 6, category: '普通教室' },
+            { id: '301', name: '301', floor: 2, x: 1, z: 2, category: '普通教室' },
+            { id: '302', name: '302', floor: 2, x: 5, z: 2, category: '普通教室' },
+            { id: '303', name: '303', floor: 2, x: 6, z: 2, category: '教师信息室' },
+            { id: '304', name: '304', floor: 2, x: 7, z: 2, category: '普通教室' },
+            { id: '305', name: '305', floor: 2, x: 8, z: 2, category: '普通教室' },
+            { id: '306', name: '306', floor: 2, x: 9, z: 2, category: '普通教室' },
+            { id: '307', name: '307', floor: 2, x: 1, z: 4, category: '普通教室' },
+            { id: '308', name: '308', floor: 2, x: 5, z: 4, category: '普通教室' },
+            { id: '309', name: '309', floor: 2, x: 6, z: 4, category: '普通教室' },
+            { id: '310', name: '310', floor: 2, x: 7, z: 4, category: '普通教室' },
+            { id: '311', name: '311', floor: 2, x: 8, z: 4, category: '普通教室' },
+            { id: '312', name: '312', floor: 2, x: 9, z: 4, category: '普通教室' },
+            { id: '313', name: '313', floor: 2, x: 1, z: 6, category: '普通教室' },
+            { id: '314', name: '314', floor: 2, x: 5, z: 6, category: '普通教室' },
+            { id: '315', name: '315', floor: 2, x: 6, z: 6, category: '普通教室' },
+            { id: '316', name: '316', floor: 2, x: 8, z: 6, category: '普通教室' },
+            { id: '317', name: '317', floor: 2, x: 9, z: 6, category: '普通教室' },
+            { id: '318', name: '318', floor: 2, x: 10, z: 6, category: '普通教室' },
+        ];
+
+        // 修复：搜索房间功能 - 使用模板字符串
+        function handleRoomSearch(input, type) {
+            const query = input.value.trim().toLowerCase();
+            const resultsContainer = document.getElementById('search-' + type + '-results');
+
+            if (!query) {
+                resultsContainer.classList.remove('active');
+                resultsContainer.innerHTML = '';
+                return;
+            }
+
+            const results = roomDatabase.filter(room => 
+                room.name.toLowerCase().includes(query) ||
+                room.category.toLowerCase().includes(query)
+            );
+
+            if (results.length === 0) {
+                resultsContainer.classList.remove('active');
+                return;
+            }
+
+            resultsContainer.innerHTML = results.slice(0, 6).map(room => {
+                const floorLabel = ['1楼', '2楼', '3楼'][room.floor];
+                const yHeight = room.floor * 4;
+                return `<div class="search-result-item" onclick="selectRoomBySearch('${room.name}', ${room.floor}, ${room.x}, ${room.z}, '${type}')">
+                    <div class="room-name">${room.name} (${floorLabel})</div>
+                    <div class="room-info">${room.category} · 3D坐标(${room.x}, ${yHeight}, ${room.z})</div>
+                </div>`;
+            }).join('');
+
+            resultsContainer.classList.add('active');
+        }
+
+        // 修复：通过搜索选择房间
+        function selectRoomBySearch(name, floor, x, z, type) {
+            if (floor < 0 || floor >= 3 || z < 0 || z >= 15 || x < 0 || x >= 15) {
+                alert('房间坐标超出地图范围');
+                return;
+            }
+
+            window.selectFloor(floor);
+
+            const OFFSET = 7.5;
+            const CELL_SIZE = 1;
+            const FLOOR_HEIGHT = 4;
+            const precisePos = new THREE.Vector3(
+                x * CELL_SIZE - OFFSET + CELL_SIZE / 2,
+                floor * FLOOR_HEIGHT + 0.5,
+                z * CELL_SIZE - OFFSET + CELL_SIZE / 2
+            );
+
+            if (type === 'start') {
+                window.setStart(precisePos, x, z, floor);
+                document.getElementById('search-start').value = name;
+                document.getElementById('search-start-results').classList.remove('active');
+                window.checkReady();
+            } else {
+                window.setEnd(precisePos, x, z, floor);
+                document.getElementById('search-end').value = name;
+                document.getElementById('search-end-results').classList.remove('active');
+                window.checkReady();
+            }
+        }
+
+        // 修复：页面跳转函数
+        function goToLogin() {
+            window.location.href = 'login.html';
+        }
+
+        function goToProfile() {
+            window.location.href = 'profile.html';
+        }
+
+        function logout() {
+            if (confirm('确定要退出登录吗?')) {
+                localStorage.removeItem('isLoggedIn');
+                localStorage.removeItem('username');
+                updateNavButtons();
+                alert('已退出登录');
+            }
+        }
+
+        // 更新导航按钮
+        function updateNavButtons() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+            const username = localStorage.getItem('username') || '';
+
+            if (isLoggedIn) {
+                document.getElementById('btn-profile').style.display = 'flex';
+                document.getElementById('btn-logout').style.display = 'flex';
+                document.getElementById('btn-login').style.display = 'none';
+                document.getElementById('user-info-bar').style.display = 'block';
+                document.getElementById('current-username').textContent = username;
+            } else {
+                document.getElementById('btn-profile').style.display = 'none';
+                document.getElementById('btn-logout').style.display = 'none';
+                document.getElementById('btn-login').style.display = 'flex';
+                document.getElementById('user-info-bar').style.display = 'none';
+            }
+        }
+
+        // 初始化
+        updateNavButtons();
+
+        // 点击其他地方关闭搜索下拉框
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-box-container')) {
+                document.querySelectorAll('.search-results-dropdown').forEach(el => el.classList.remove('active'));
+            }
+        });
+    </script>
+</body>
+</html>
